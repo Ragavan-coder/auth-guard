@@ -64,5 +64,52 @@ export function createLocalAuthRouter(): Router {
     })
   );
 
+  /**
+   * GET /auth/demo-tokens
+   * Returns pre-generated valid access tokens for all sample test users
+   */
+  router.get(
+    '/auth/demo-tokens',
+    asyncHandler(async (_req: Request, res: Response) => {
+      const users = ['user123', 'user456', 'user789', 'admin789'];
+      const tokens: Record<string, string> = {};
+      for (const userId of users) {
+        tokens[userId] = await authService.signToken({
+          sub: userId,
+          email: `${userId}@authz-guard.internal`,
+          username: userId,
+          role: userId === 'admin789' ? 'admin' : 'user',
+          local: true
+        });
+      }
+      res.status(200).json({
+        message: 'Pre-generated demo tokens for live curl / testing',
+        tokens
+      });
+    })
+  );
+
+  /**
+   * GET /auth/token/:userId
+   * Generates a valid test token for any user ID on demand
+   */
+  router.get(
+    '/auth/token/:userId',
+    asyncHandler(async (req: Request, res: Response) => {
+      const userId = req.params['userId'] || 'user123';
+      const token = await authService.signToken({
+        sub: userId,
+        email: `${userId}@authz-guard.internal`,
+        username: userId,
+        role: userId.includes('admin') ? 'admin' : 'user',
+        local: true
+      });
+      res.status(200).json({
+        user_id: userId,
+        token
+      });
+    })
+  );
+
   return router;
 }

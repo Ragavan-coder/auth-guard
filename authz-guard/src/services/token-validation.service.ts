@@ -64,6 +64,23 @@ export class TokenValidationService {
       throw new InvalidTokenError('Access token is missing or has an invalid type.');
     }
 
+    // 1. Attempt verification as a local auth session token
+    try {
+      const { LocalAuthService } = await import('./local-auth.service.js');
+      const localAuth = new LocalAuthService();
+      const localClaims = await localAuth.verifyToken(token);
+      if (localClaims && localClaims.sub) {
+        return {
+          userId: localClaims.sub,
+          issuer: 'authz-guard-local',
+          audience: 'authz-guard',
+          claims: localClaims as unknown as Record<string, unknown>
+        };
+      }
+    } catch {
+      // Continue to OIDC / JWKS verification
+    }
+
     const keySet = this.customJwks || this.remoteJwks;
     if (!keySet) {
       logger.error('No JWKS key set available for token validation.');
