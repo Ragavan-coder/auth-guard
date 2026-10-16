@@ -1,0 +1,23 @@
+{
+  "name": "authservice-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix authz-guard run build",
+    "start": "npm --prefix authz-guard start",
+    "dev": "npm --prefix authz-guard run dev",
+    "lint": "npm --prefix authz-guard run lint",
+    "typecheck": "npm --prefix authz-guard run typecheck",
+    "format": "npm --prefix authz-guard run format",
+    "format:check": "npm --prefix authz-guard run format:check",
+    "test": "npm --prefix authz-guard test",
+    "test:unit": "npm --prefix authz-guard run test:unit",
+    "test:integration": "npm --prefix authz-guard run test:integration",
+    "test:e2e": "npm --prefix authz-guard run test:e2e",
+    "db:migrate": "npm --prefix authz-guard run db:migrate",
+    "db:seed": "npm --prefix authz-guard run db:seed",
+    "demo": "npm --prefix authz-guard run demo",
+    "ui:dev": "npm --prefix authz-guard-ui run dev",
+    "ui:build": "npm --prefix authz-guard-ui run build"
+  }
+}

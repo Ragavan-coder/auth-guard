@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: AuthZ Guard Authorization Service API
+  description: |
+    Production-minded OAuth2/OIDC Authentication and Authorization Service.
+    Validates cryptographically signed access tokens and evaluates fine-grained ACL permissions using SQLite.
+  version: 1.0.0
+  contact:
+    name: AuthZ Guard Team
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /authorize:
+    post:
+      summary: Evaluate access authorization
+      description: |
+        Validates the provided OAuth2/OIDC JWT access token and evaluates fine-grained
+        authorization policies against the requested HTTP method and resource path.
+      operationId: evaluateAuthorization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeRequest'
+            examples:
+              user456_read_wallet_transactions:
+                summary: User 456 Read Transactions
+                value:
+                  access_token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+                  method: GET
+                  path: /wallets/wallet-789/transactions
+              user123_delete_transaction:
+                summary: User 123 Denied Delete
+                value:
+                  access_token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+                  method: DELETE
+                  path: /transactions/txn-456
+      responses:
+        '200':
+          description: |
+            Authorization decision completed. Both ALLOW and DENY decisions return HTTP 200
+            with the evaluation result and explainability metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeSuccessResponse'
+              examples:
+                allow_decision:
+                  summary: Allow Evaluation Result
+                  value:
+                    decision: ALLOW
+                    user_id: user456
+                    action: read
+                    resource: wallets/wallet-789/transactions
+                    reason_code: POLICY_ALLOW
+                    reason: A matching allow policy applies at the highest applicable specificity.
+                    matched_permissions:
+                      - id: 7
+                        action: read
+                        resource: wallets/wallet-789/transactions
+                        effect: allow
+                    request_id: 11a0d783-cf22-4cf0-bbdf-57125e982189
+                deny_decision:
+                  summary: Deny Evaluation Result
+                  value:
+                    decision: DENY
+                    user_id: user123
+                    action: delete
+                    resource: transactions/txn-456
+                    reason_code: INHERITED_DENY
+                    reason: Inherited explicit delete denial applies at highest applicable specificity.
+                    matched_permissions:
+                      - id: 3
+                        action: delete
+                        resource: transactions
+                        effect: deny
+                    request_id: 28b2e881-bf33-4ef1-acde-48135e982190
+        '400':
+          description: Malformed or invalid request body, or path traversal detected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing, invalid, expired, or untrusted access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Unsupported HTTP method for authorization evaluation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or database unavailable (fails closed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health/live:
+    get:
+      summary: Liveness check
+      description: Returns 200 if the Node.js process is active.
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: alive
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /health/ready:
+    get:
+      summary: Readiness check
+      description: Returns 200 if SQLite connectivity is operational, 503 if unavailable.
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+                  database:
+                    type: string
+                    example: connected
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: unready
+                  database:
+                    type: string
+                    example: unavailable
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  schemas:
+    AuthorizeRequest:
+      type: object
+      required:
+        - access_token
+        - method
+        - path
+      properties:
+        access_token:
+          type: string
+          description: Real cryptographically signed OAuth2/OIDC JWT access token.
+        method:
+          type: string
+          description: HTTP method to evaluate (e.g. GET, HEAD, POST, PUT, PATCH, DELETE).
+          example: GET
+        path:
+          type: string
+          description: Origin-form absolute URL path of requested resource.
+          example: /wallets/wallet-789/transactions
+
+    MatchedPermission:
+      type: object
+      required:
+        - id
+        - action
+        - resource
+        - effect
+      properties:
+        id:
+          type: integer
+          example: 7
+        action:
+          type: string
+          enum: [read, write, delete]
+          example: read
+        resource:
+          type: string
+          example: wallets/wallet-789/transactions
+        effect:
+          type: string
+          enum: [allow, deny]
+          example: allow
+
+    AuthorizeSuccessResponse:
+      type: object
+      required:
+        - decision
+        - user_id
+        - action
+        - resource
+        - reason_code
+        - reason
+        - matched_permissions
+        - request_id
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, DENY]
+          example: ALLOW
+        user_id:
+          type: string
+          example: user456
+        action:
+          type: string
+          enum: [read, write, delete]
+          example: read
+        resource:
+          type: string
+          example: wallets/wallet-789/transactions
+        reason_code:
+          type: string
+          example: POLICY_ALLOW
+        reason:
+          type: string
+          example: A matching allow policy applies at the highest applicable specificity.
+        matched_permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchedPermission'
+        request_id:
+          type: string
+          format: uuid
+          example: 11a0d783-cf22-4cf0-bbdf-57125e982189
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: INVALID_TOKEN
+        message:
+          type: string
+          example: The provided access token is invalid, expired, or untrusted.
+        request_id:
+          type: string
+          example: 11a0d783-cf22-4cf0-bbdf-57125e982189
+        details:
+          type: object
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'

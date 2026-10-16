@@ -1,0 +1,32 @@
+services:
+  authz-guard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: authz-guard:1.0.0
+    container_name: authz-guard-service
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/app/data/authz.db
+      - OIDC_ISSUER_URL=https://auth.example.com
+      - OIDC_AUDIENCE=https://api.example.com/v1
+      - LOG_LEVEL=info
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX=100
+      - TRUST_PROXY=true
+    volumes:
+      - authz-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  authz-data:
+    driver: local
