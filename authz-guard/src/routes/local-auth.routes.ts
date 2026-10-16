@@ -65,6 +65,32 @@ export function createLocalAuthRouter(): Router {
   );
 
   /**
+   * POST /auth/sync-auth0-user
+   * Synchronizes an Auth0 authenticated user into SQLite so Admin can manage permissions.
+   */
+  router.post(
+    '/auth/sync-auth0-user',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { sub, email, name } = req.body;
+      if (!email && !sub) {
+        res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'sub or email required.' } });
+        return;
+      }
+      const { UserRepository } = await import('../repositories/user.repository.js');
+      const userRepo = new UserRepository();
+      const user = userRepo.upsertOAuthUser({
+        sub: sub || email,
+        email: email || sub,
+        name: name || undefined
+      });
+      res.status(200).json({
+        message: 'Auth0 user synchronized with SQLite successfully.',
+        user
+      });
+    })
+  );
+
+  /**
    * GET /auth/demo-tokens
    * Returns pre-generated valid access tokens for all sample test users
    */

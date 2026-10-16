@@ -30,7 +30,8 @@ export class AuthorizeService {
     const canonicalResource = this.resourceResolver.resolve(request.path);
 
     // 4. Retrieve applicable permissions from SQLite
-    const policies = this.permissionRepo.findByUserAndAction(userId, action);
+    const secondaryId = typeof identity.claims['email'] === 'string' ? identity.claims['email'] : undefined;
+    const policies = this.permissionRepo.findByUserAndAction(userId, action, secondaryId);
 
     // 5. Evaluate policy rules with deterministic specificity and explicit-deny precedence
     const evaluation = this.permissionEvaluator.evaluate(

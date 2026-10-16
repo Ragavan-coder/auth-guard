@@ -71,6 +71,20 @@ export class UserRepository {
     return (stmt.get(id) as User) || null;
   }
 
+  public upsertOAuthUser(data: { sub: string; email: string; name?: string }): User {
+    const existing = this.findByEmail(data.email) || (data.sub ? this.findByUsername(data.sub) : null);
+    if (existing) {
+      return existing;
+    }
+    const username = data.name || data.sub || data.email.split('@')[0];
+    return this.create({
+      username,
+      email: data.email,
+      password_hash: 'oauth2:auth0',
+      role: 'user'
+    });
+  }
+
   public findAll(): UserPublic[] {
     const stmt = this.db.prepare(
       'SELECT id, username, email, role, created_at FROM users ORDER BY id ASC'
@@ -83,9 +97,9 @@ export class UserRepository {
     return users.map((u) => {
       const perms = this.db
         .prepare(
-          'SELECT id, action, resource, effect FROM user_permissions WHERE user_id = ? ORDER BY id ASC'
+          'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? OR user_id = ? ORDER BY id ASC'
         )
-        .all(u.email) as Array<{ id: number; action: string; resource: string; effect: string }>;
+        .all(u.email, u.username) as Array<{ id: number; action: string; resource: string; effect: string }>;
       return { ...u, permissions: perms };
     });
   }
@@ -94,7 +108,7 @@ export class UserRepository {
     try {
       const user = this.findById(id);
       if (!user) return false;
-      this.db.prepare('DELETE FROM user_permissions WHERE user_id = ?').run(user.email);
+      this.db.prepare('DELETE FROM user_permissions WHERE user_id = ? OR user_id = ?').run(user.email, user.username);
       const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
       const result = stmt.run(id);
       return result.changes > 0;

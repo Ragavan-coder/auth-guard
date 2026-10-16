@@ -23,15 +23,24 @@ export class PermissionRepository {
   /**
    * Retrieves all applicable permission rules for a given user and action using parameterized SQL.
    */
-  public findByUserAndAction(userId: string, action: Action): PolicyRule[] {
+  public findByUserAndAction(userId: string, action: Action, secondaryId?: string): PolicyRule[] {
     try {
-      const stmt = this.db.prepare<[string, string]>(`
-        SELECT id, user_id, action, resource, effect
-        FROM user_permissions
-        WHERE user_id = ? AND (action = ? OR action = '*')
-      `);
-
-      const rows = stmt.all(userId, action) as RawPermissionRow[];
+      let rows: RawPermissionRow[];
+      if (secondaryId && secondaryId !== userId) {
+        const stmt = this.db.prepare<[string, string, string]>(`
+          SELECT id, user_id, action, resource, effect
+          FROM user_permissions
+          WHERE (user_id = ? OR user_id = ?) AND (action = ? OR action = '*')
+        `);
+        rows = stmt.all(userId, secondaryId, action) as RawPermissionRow[];
+      } else {
+        const stmt = this.db.prepare<[string, string]>(`
+          SELECT id, user_id, action, resource, effect
+          FROM user_permissions
+          WHERE user_id = ? AND (action = ? OR action = '*')
+        `);
+        rows = stmt.all(userId, action) as RawPermissionRow[];
+      }
 
       return rows.map((row) => ({
         id: row.id,

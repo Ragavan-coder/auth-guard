@@ -88,6 +88,20 @@ export function App() {
           setAuth0User(profile || null);
           setIsAuth0Authenticated(true);
           showToast(`Welcome back, ${profile?.name || profile?.email || "User"}!`);
+
+          try {
+            await fetch("http://localhost:3000/auth/sync-auth0-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                sub: profile?.sub,
+                email: profile?.email || profile?.sub,
+                name: profile?.name || profile?.nickname || profile?.email,
+              }),
+            });
+          } catch {
+            // Background sync error handled gracefully
+          }
         }
       } catch (err) {
         if (isMounted) setAuthError((err as Error).message);
