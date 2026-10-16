@@ -318,7 +318,7 @@ export function App() {
                     id="tab-auth0"
                     aria-selected={activeTab === "auth0"}
                   >
-                    🔐 OAuth2 / Auth0
+                    OAuth2 / Auth0
                   </button>
                   <button
                     role="tab"
@@ -327,7 +327,7 @@ export function App() {
                     id="tab-local"
                     aria-selected={activeTab === "local"}
                   >
-                    👤 Local Account
+                    Local Account
                   </button>
                 </div>
 
