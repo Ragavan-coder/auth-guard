@@ -21,7 +21,7 @@ export function createAdminRouter(): Router {
   const router = Router();
 
   // All admin routes require a valid local JWT with role=admin
-  router.use(requireLocalAuth(true));
+  router.use('/admin', requireLocalAuth(true));
 
   const userRepo = new UserRepository();
 
