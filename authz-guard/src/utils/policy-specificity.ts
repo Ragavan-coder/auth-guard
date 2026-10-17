@@ -15,7 +15,10 @@ import { SpecificityScore } from '../domain/policy.types.js';
  * 4. Pattern segment depth (deeper pattern = more specific)
  */
 export function calculateSpecificity(pattern: string, resource: string): SpecificityScore {
-  if (pattern === '*') {
+  const p = pattern === '*' ? '*' : pattern.replace(/^\/+/, '').replace(/\/+$/, '');
+  const r = resource === '*' ? '*' : resource.replace(/^\/+/, '').replace(/\/+$/, '');
+
+  if (p === '*') {
     return {
       scopeTier: 1,
       fixedSegments: 0,
@@ -24,8 +27,8 @@ export function calculateSpecificity(pattern: string, resource: string): Specifi
     };
   }
 
-  if (pattern === resource) {
-    const segs = pattern.split('/');
+  if (p === r) {
+    const segs = p.split('/');
     return {
       scopeTier: 4,
       fixedSegments: segs.length,
@@ -34,9 +37,9 @@ export function calculateSpecificity(pattern: string, resource: string): Specifi
     };
   }
 
-  if (!pattern.includes('*')) {
+  if (!p.includes('*')) {
     // Literal collection inheritance (e.g., 'transactions' matching 'transactions/txn-123')
-    const segs = pattern.split('/');
+    const segs = p.split('/');
     return {
       scopeTier: 2,
       fixedSegments: segs.length,
@@ -46,7 +49,7 @@ export function calculateSpecificity(pattern: string, resource: string): Specifi
   }
 
   // Wildcard pattern match
-  const segs = pattern.split('/');
+  const segs = p.split('/');
   let fixedCount = 0;
   let wildCount = 0;
 

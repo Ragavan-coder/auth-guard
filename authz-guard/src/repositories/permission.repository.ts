@@ -21,26 +21,39 @@ export class PermissionRepository {
   }
 
   /**
-   * Retrieves all applicable permission rules for a given user and action using parameterized SQL.
+   * Retrieves all applicable permission rules for a given user (or user aliases) and action using parameterized SQL.
    */
-  public findByUserAndAction(userId: string, action: Action, secondaryId?: string): PolicyRule[] {
+  public findByUserAndAction(
+    userIds: string | string[],
+    action: Action,
+    secondaryId?: string
+  ): PolicyRule[] {
     try {
-      let rows: RawPermissionRow[];
-      if (secondaryId && secondaryId !== userId) {
-        const stmt = this.db.prepare<[string, string, string]>(`
-          SELECT id, user_id, action, resource, effect
-          FROM user_permissions
-          WHERE (user_id = ? OR user_id = ?) AND (action = ? OR action = '*')
-        `);
-        rows = stmt.all(userId, secondaryId, action) as RawPermissionRow[];
-      } else {
-        const stmt = this.db.prepare<[string, string]>(`
-          SELECT id, user_id, action, resource, effect
-          FROM user_permissions
-          WHERE user_id = ? AND (action = ? OR action = '*')
-        `);
-        rows = stmt.all(userId, action) as RawPermissionRow[];
+      const idSet = new Set<string>();
+      if (Array.isArray(userIds)) {
+        for (const id of userIds) {
+          if (typeof id === 'string' && id.trim()) idSet.add(id.trim());
+        }
+      } else if (typeof userIds === 'string' && userIds.trim()) {
+        idSet.add(userIds.trim());
       }
+      if (secondaryId && typeof secondaryId === 'string' && secondaryId.trim()) {
+        idSet.add(secondaryId.trim());
+      }
+
+      if (idSet.size === 0) {
+        return [];
+      }
+
+      const idList = Array.from(idSet);
+      const placeholders = idList.map(() => '?').join(', ');
+      const sql = `
+        SELECT id, user_id, action, resource, effect
+        FROM user_permissions
+        WHERE user_id IN (${placeholders}) AND (action = ? OR action = '*')
+      `;
+
+      const rows = this.db.prepare(sql).all(...idList, action) as RawPermissionRow[];
 
       return rows.map((row) => ({
         id: row.id,
@@ -50,7 +63,7 @@ export class PermissionRepository {
         effect: row.effect as 'allow' | 'deny'
       }));
     } catch (err) {
-      logger.error({ err, userId, action }, 'Failed to query permissions from SQLite.');
+      logger.error({ err, userIds, action }, 'Failed to query permissions from SQLite.');
       throw new DatabaseError('Failed to retrieve permissions from database.');
     }
   }

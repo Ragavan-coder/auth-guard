@@ -73,5 +73,29 @@ export const SAMPLE_PERMISSIONS: ReadonlyArray<SamplePermissionRecord> = Object.
     action: 'delete',
     resource: '*',
     effect: 'allow'
+  },
+  {
+    user_id: 'Ragavan S',
+    action: 'read',
+    resource: 'transactions',
+    effect: 'allow'
+  },
+  {
+    user_id: 'Ragavan S',
+    action: 'write',
+    resource: 'transactions',
+    effect: 'allow'
+  },
+  {
+    user_id: 'cybersafety9870@gmail.com',
+    action: 'read',
+    resource: 'transactions',
+    effect: 'allow'
+  },
+  {
+    user_id: 'cybersafety9870@gmail.com',
+    action: 'write',
+    resource: 'transactions',
+    effect: 'allow'
   }
 ]);

@@ -16,32 +16,36 @@ export function matchResource(pattern: string, resource: string): boolean {
     return false;
   }
 
+  // Canonicalize leading and trailing slashes for comparison
+  const p = pattern === '*' ? '*' : pattern.replace(/^\/+/, '').replace(/\/+$/, '');
+  const r = resource === '*' ? '*' : resource.replace(/^\/+/, '').replace(/\/+$/, '');
+
   // 1. Global wildcard matches everything
-  if (pattern === '*') {
+  if (p === '*') {
     return true;
   }
 
   // 2. Exact match
-  if (pattern === resource) {
+  if (p === r) {
     return true;
   }
 
   // 3. Literal patterns (no wildcards)
-  if (!pattern.includes('*')) {
+  if (!p.includes('*')) {
     // Top-level collection inheritance: if pattern is a single collection segment (no '/'),
     // it applies to the collection and its descendant items.
-    if (!pattern.includes('/')) {
-      return resource.startsWith(pattern + '/');
+    if (!p.includes('/')) {
+      return r.startsWith(p + '/');
     }
     // Multi-segment literal entity: requires exact match
     return false;
   }
 
   // 4. Wildcard patterns
-  const pSegs = pattern.split('/');
-  const rSegs = resource.split('/');
+  const pSegs = p.split('/');
+  const rSegs = r.split('/');
 
-  const isTerminalWildcard = pattern.endsWith('/*');
+  const isTerminalWildcard = p.endsWith('/*');
 
   if (isTerminalWildcard) {
     // Prefix length before terminal '/*'
@@ -51,9 +55,9 @@ export function matchResource(pattern: string, resource: string): boolean {
     }
 
     for (let i = 0; i < prefixLen; i++) {
-      const p = pSegs[i];
-      const r = rSegs[i];
-      if (p !== '*' && p !== r) {
+      const pSeg = pSegs[i];
+      const rSeg = rSegs[i];
+      if (pSeg !== '*' && pSeg !== rSeg) {
         return false;
       }
     }
@@ -68,9 +72,9 @@ export function matchResource(pattern: string, resource: string): boolean {
   }
 
   for (let i = 0; i < pSegs.length; i++) {
-    const p = pSegs[i];
-    const r = rSegs[i];
-    if (p !== '*' && p !== r) {
+    const pSeg = pSegs[i];
+    const rSeg = rSegs[i];
+    if (pSeg !== '*' && pSeg !== rSeg) {
       return false;
     }
   }

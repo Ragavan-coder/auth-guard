@@ -150,7 +150,10 @@ npm run build              # Production build compilation check
 
 ---
 
-## 8. Reproducible Demo Script
+## 8. Reproducible Demo Script & Walkthrough Video
+
+> 🎥 **Recorded Video Demonstration & Drive Artifacts**:
+> **[Watch Live Demo on Google Drive](https://drive.google.com/drive/folders/1VA31Xr32YBKXcWhk_f_lmv4q5D1UMXMz?usp=sharing)**
 
 Run the automated assessment demo script:
 ```bash

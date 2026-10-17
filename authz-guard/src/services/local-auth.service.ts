@@ -84,6 +84,21 @@ export class LocalAuthService {
     const password_hash = this.hashPassword(data.password);
     const user = this.userRepo.create({ username: data.username, email: data.email, password_hash });
 
+    // Seed default allowed permissions for new registered user
+    try {
+      const db = (this.userRepo as unknown as { db: import('better-sqlite3').Database }).db;
+      if (db) {
+        const stmt = db.prepare(
+          'INSERT OR IGNORE INTO user_permissions (user_id, action, resource, effect) VALUES (?, ?, ?, ?)'
+        );
+        stmt.run(user.username, 'read', 'transactions', 'allow');
+        stmt.run(user.email, 'read', 'transactions', 'allow');
+        stmt.run(String(user.id), 'read', 'transactions', 'allow');
+      }
+    } catch {
+      // non-blocking
+    }
+
     const token = await this.signToken({
       sub: String(user.id),
       email: user.email,

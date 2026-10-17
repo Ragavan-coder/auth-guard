@@ -45,6 +45,12 @@ describe('Permission Repository Integration Tests', () => {
     expect(rules).toHaveLength(0);
   });
 
+  it('retrieves permissions when user alias or multiple identities are provided', () => {
+    const rules = repo.findByUserAndAction(['user123_alias', 'user123'], 'read');
+    expect(rules).toHaveLength(1);
+    expect(rules[0]?.resource).toBe('transactions');
+  });
+
   it('throws DatabaseError when underlying database query fails', () => {
     // Drop table to simulate operational database failure
     db.exec('DROP TABLE user_permissions');

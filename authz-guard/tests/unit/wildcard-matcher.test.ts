@@ -64,4 +64,10 @@ describe('Wildcard and Hierarchical Matcher Utility', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(matchResource('transactions', null as any)).toBe(false);
   });
+
+  it('canonicalizes leading and trailing slashes seamlessly', () => {
+    expect(matchResource('/transactions', 'transactions')).toBe(true);
+    expect(matchResource('transactions', '/transactions')).toBe(true);
+    expect(matchResource('/wallets/*', '/wallets/wallet-789')).toBe(true);
+  });
 });

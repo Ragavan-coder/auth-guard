@@ -34,6 +34,8 @@ export function App() {
   const [auth0User, setAuth0User] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const [auth0Token, setAuth0Token] = useState<string>("");
+
   const [localSession, setLocalSession] = useState<LocalSession | null>(() => {
     try {
       const stored = localStorage.getItem(LOCAL_SESSION_KEY);
@@ -110,6 +112,16 @@ export function App() {
                 name: profile?.name || profile?.nickname || profile?.email,
               }),
             });
+            // Acquire token for Auth0 signed user for live evaluator testing
+            const tokenRes = await fetch(
+              `http://localhost:3000/auth/token/${encodeURIComponent(profile?.name || profile?.email || "user")}`
+            );
+            if (tokenRes.ok) {
+              const tokenData = await tokenRes.json();
+              if (tokenData.token && isMounted) {
+                setAuth0Token(tokenData.token);
+              }
+            }
           } catch {
             // Background sync error handled gracefully
           }
@@ -225,8 +237,8 @@ export function App() {
           <div className="evaluator-modal-content" onClick={(e) => e.stopPropagation()}>
             <AuthorizeEvaluator
               onClose={() => setShowEvaluator(false)}
-              defaultToken={localSession?.token}
-              defaultUserId={localSession?.user.email || auth0User?.email}
+              defaultToken={localSession?.token || auth0Token}
+              defaultUserId={currentUser?.name || currentUser?.email || "Ragavan S"}
             />
           </div>
         </div>
@@ -302,8 +314,8 @@ export function App() {
 
                 <div className="authz-test-section">
                   <AuthorizeEvaluator
-                    defaultToken={localSession?.token}
-                    defaultUserId={localSession?.user.email || auth0User?.email}
+                    defaultToken={localSession?.token || auth0Token}
+                    defaultUserId={currentUser?.name || currentUser?.email || "Ragavan S"}
                   />
                 </div>
 

@@ -37,6 +37,7 @@ export function seedPermissions(db: Database.Database = getDatabase()): { insert
     userInsertStmt.run('user456', 'user456@authz-guard.internal', 'demo:password', 'user');
     userInsertStmt.run('user789', 'user789@authz-guard.internal', 'demo:password', 'user');
     userInsertStmt.run('admin789', 'admin789@authz-guard.internal', 'demo:password', 'admin');
+    userInsertStmt.run('Ragavan S', 'cybersafety9870@gmail.com', 'demo:password', 'user');
 
     for (const perm of SAMPLE_PERMISSIONS) {
       // Check if exact rule already exists

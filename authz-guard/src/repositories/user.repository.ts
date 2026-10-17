@@ -76,7 +76,7 @@ export class UserRepository {
     if (existing) {
       return existing;
     }
-    const username = data.name || data.sub || data.email.split('@')[0];
+    const username = data.name || data.sub || (data.email.includes('@') ? data.email.split('@')[0]! : data.email) || 'user';
     return this.create({
       username,
       email: data.email,

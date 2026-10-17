@@ -20,6 +20,13 @@ interface AuthorizeResponse {
   request_id: string;
 }
 
+interface UserItem {
+  key: string;
+  label: string;
+  role: string;
+  email: string;
+}
+
 interface AuthorizeEvaluatorProps {
   onClose?: () => void;
   defaultToken?: string;
@@ -27,10 +34,11 @@ interface AuthorizeEvaluatorProps {
 }
 
 export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: AuthorizeEvaluatorProps) {
-  const [selectedUser, setSelectedUser] = useState<string>(defaultUserId || "user123");
+  const [selectedUser, setSelectedUser] = useState<string>(defaultUserId || "Ragavan S");
   const [method, setMethod] = useState<string>("GET");
   const [resource, setResource] = useState<string>("/transactions");
   const [tokens, setTokens] = useState<Record<string, string>>({});
+  const [userList, setUserList] = useState<UserItem[]>([]);
   const [customToken, setCustomToken] = useState<string>(defaultToken || "");
   const [isLoadingTokens, setIsLoadingTokens] = useState<boolean>(true);
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
@@ -44,9 +52,26 @@ export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: Aut
         const res = await fetch(`${API}/auth/demo-tokens`);
         if (res.ok) {
           const data = await res.json();
-          setTokens(data.tokens || {});
-          if (!defaultToken && data.tokens?.user123) {
-            setCustomToken(data.tokens.user123);
+          const loadedTokens = data.tokens || {};
+          setTokens(loadedTokens);
+
+          if (data.userList && Array.isArray(data.userList)) {
+            setUserList(data.userList);
+          }
+
+          // Automatically select signed user if available, or default
+          if (defaultUserId && loadedTokens[defaultUserId]) {
+            setSelectedUser(defaultUserId);
+            setCustomToken(loadedTokens[defaultUserId]);
+          } else if (defaultToken) {
+            setSelectedUser("custom");
+            setCustomToken(defaultToken);
+          } else if (loadedTokens["Ragavan S"]) {
+            setSelectedUser("Ragavan S");
+            setCustomToken(loadedTokens["Ragavan S"]);
+          } else if (loadedTokens.user123) {
+            setSelectedUser("user123");
+            setCustomToken(loadedTokens.user123);
           }
         }
       } catch (err) {
@@ -56,7 +81,7 @@ export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: Aut
       }
     }
     loadDemoTokens();
-  }, [defaultToken]);
+  }, [defaultToken, defaultUserId]);
 
   const handleUserChange = (u: string) => {
     setSelectedUser(u);
@@ -137,6 +162,9 @@ export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: Aut
     }, 50);
   };
 
+  const signedUserItem = userList.find((u) => u.label.includes("[Signed Person]") || u.key === "Ragavan S");
+  const signedUserKey = signedUserItem ? signedUserItem.key : (tokens["Ragavan S"] ? "Ragavan S" : null);
+
   return (
     <div className="evaluator-card">
       <div className="evaluator-header">
@@ -160,21 +188,31 @@ export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: Aut
           className="preset-btn allow-preset"
           onClick={() => setScenario("user123", "GET", "/transactions")}
         >
-          🟢 Allow: GET /transactions
+          🟢 Allow: user123 (GET /transactions)
         </button>
+        {signedUserKey && (
+          <button
+            type="button"
+            className="preset-btn allow-preset signed-user-preset"
+            onClick={() => setScenario(signedUserKey, "GET", "/transactions")}
+            title="Evaluate ALLOW for signed person"
+          >
+            ⭐ Allow: {signedUserKey} (GET /transactions)
+          </button>
+        )}
         <button
           type="button"
           className="preset-btn deny-preset"
           onClick={() => setScenario("user123", "DELETE", "/transactions/txn-456")}
         >
-          🔴 Deny: DELETE /transactions/txn-456
+          🔴 Deny: user123 (DELETE /transactions/txn-456)
         </button>
         <button
           type="button"
           className="preset-btn wildcard-preset"
           onClick={() => setScenario("user789", "POST", "/wallets/wallet-456/transactions/txn-999")}
         >
-          ⚡ Wildcard: POST wallets/*/transactions/*
+          ⚡ Wildcard: user789 (POST wallets/*/transactions/*)
         </button>
       </div>
 
@@ -189,11 +227,24 @@ export function AuthorizeEvaluator({ onClose, defaultToken, defaultUserId }: Aut
               onChange={(e) => handleUserChange(e.target.value)}
               disabled={isLoadingTokens}
             >
-              <option value="user123">user123 (Seeded Demo)</option>
-              <option value="user456">user456 (Wallets Read)</option>
-              <option value="user789">user789 (Wildcard Writer)</option>
-              <option value="admin789">admin789 (Global Admin)</option>
-              {defaultToken && <option value="custom">Current Session</option>}
+              {userList.length > 0 ? (
+                userList.map((u) => (
+                  <option key={u.key} value={u.key}>
+                    {u.label}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="user123">user123 (Seeded Demo)</option>
+                  <option value="user456">user456 (Wallets Read)</option>
+                  <option value="user789">user789 (Wildcard Writer)</option>
+                  <option value="admin789">admin789 (Global Admin)</option>
+                  {tokens["Ragavan S"] && <option value="Ragavan S">Ragavan S (Signed Person)</option>}
+                </>
+              )}
+              {defaultToken && (
+                <option value="custom">Current Session ({defaultUserId || "Signed User"})</option>
+              )}
             </select>
           </div>
 

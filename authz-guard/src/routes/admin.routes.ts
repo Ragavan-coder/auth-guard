@@ -131,13 +131,15 @@ export function createAdminRouter(): Router {
       }
 
       const { user_id, action, resource, effect } = parsed.data;
+      const canonicalResource =
+        resource === '*' ? '*' : resource.trim().replace(/^\/+/, '').replace(/\/+$/, '') || resource.trim();
       const permRepo = new PermissionRepository();
       const db = (permRepo as unknown as { db: import('better-sqlite3').Database }).db;
       const result = db
         .prepare('INSERT INTO user_permissions (user_id, action, resource, effect) VALUES (?, ?, ?, ?)')
-        .run(user_id, action, resource, effect);
+        .run(user_id, action, canonicalResource, effect);
 
-      logger.info({ user_id, action, resource, effect }, 'Admin added permission.');
+      logger.info({ user_id, action, resource: canonicalResource, effect }, 'Admin added permission.');
       res.status(201).json({
         message: 'Permission added.',
         id: result.lastInsertRowid

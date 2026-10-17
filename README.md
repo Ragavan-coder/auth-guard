@@ -7,8 +7,11 @@
 [![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57.svg)](https://www.sqlite.org/)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1%20%2F%20Swagger-85EA2D.svg)](http://localhost:3000/docs)
 [![Security Policy](https://img.shields.io/badge/Security-Fail--Closed-red.svg)](./SECURITY.md)
+[![Live Demo Video](https://img.shields.io/badge/Live%20Demo-Google%20Drive-4285F4.svg)](https://drive.google.com/drive/folders/1VA31Xr32YBKXcWhk_f_lmv4q5D1UMXMz?usp=sharing)
 
 > A production-grade, high-assurance Policy Decision Point (PDP) and Identity Service. AuthZ Guard cryptographically validates OAuth2/OIDC access tokens and local identity credentials, evaluating fine-grained authorization policies against an embedded SQLite database with mathematical specificity, segment-aware wildcard matching, explicit-deny overrides, and administrative role management.
+>
+> 🎥 **Live Demo & Video Walkthrough**: [Google Drive Demo Folder](https://drive.google.com/drive/folders/1VA31Xr32YBKXcWhk_f_lmv4q5D1UMXMz?usp=sharing)
 
 ---
 
@@ -458,6 +461,9 @@ curl "http://localhost:3000/audit?user_id=user123&decision=DENY"
 
 ## 🖥️ Interactive UI Walkthrough & PDP Tester
 
+> 🎬 **Recorded Video Demonstration & Drive Artifacts**:
+> **[Watch Live Demo on Google Drive](https://drive.google.com/drive/folders/1VA31Xr32YBKXcWhk_f_lmv4q5D1UMXMz?usp=sharing)**
+
 ### 1. Authentication Modes
 
 Navigate to `http://localhost:5173`:
@@ -484,6 +490,7 @@ When signed in as an administrator:
 1. Click the **"Admin Dashboard"** button in the header.
 2. **User Management**: View all registered accounts, change user roles between `user`, `auditor`, and `admin`, or delete credentials.
 3. **Permission Management**: Select any user to inspect their active ACL permissions in the SQLite database. Add new rules (`action`, `resource`, `effect`) or revoke rules with immediate real-time effect.
+4. **Audit Log & Filtering**: View structured audit trail entries with real-time decision (`ALLOW` / `DENY`) badges, request IDs, and live filter controls by decision and user identity.
 
 ---
 
@@ -491,6 +498,7 @@ When signed in as an administrator:
 
 | Requirement | Implementation Detail | Verification Status |
 |---|---|---|
+| **Demo Walkthrough Video** | Recorded demonstration of AuthN, PDP evaluations, and admin features | ✅ [Google Drive Folder](https://drive.google.com/drive/folders/1VA31Xr32YBKXcWhk_f_lmv4q5D1UMXMz?usp=sharing) |
 | **Validate OAuth2 Tokens** | Cryptographic validation of RS256/ES256/EdDSA JWTs via `jose` and `jwks-rsa` | ✅ Fully Compliant |
 | **Extract User Identity** | Immutable extraction of `sub` claim; spoofing resistant | ✅ Fully Compliant |
 | **Check SQLite Permissions** | Parameterized queries on `user_permissions` table via `better-sqlite3` | ✅ Fully Compliant |
@@ -501,7 +509,7 @@ When signed in as an administrator:
 | **Fail-Closed Default** | Missing policies or exceptions result in DENY | ✅ Fully Compliant |
 | **Admin Operations** | Complete user credential and permission lifecycle management | ✅ Fully Compliant |
 | **Interactive UI** | Production-ready React/Vite dashboard with live simulator | ✅ Fully Compliant |
-| **Test Suite** | 73 automated tests (40 Unit, 16 Integration, 17 E2E) | ✅ Fully Compliant |
+| **Test Suite** | 75 automated tests (41 Unit, 17 Integration, 17 E2E) | ✅ Fully Compliant |
 
 ---
 

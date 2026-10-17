@@ -83,6 +83,22 @@ export function createLocalAuthRouter(): Router {
         email: email || sub,
         name: name || undefined
       });
+
+      // Seed baseline allow permissions for synced user
+      try {
+        const db = (userRepo as unknown as { db: import('better-sqlite3').Database }).db;
+        if (db) {
+          const permStmt = db.prepare(
+            'INSERT OR IGNORE INTO user_permissions (user_id, action, resource, effect) VALUES (?, ?, ?, ?)'
+          );
+          if (user.username) permStmt.run(user.username, 'read', 'transactions', 'allow');
+          if (user.email) permStmt.run(user.email, 'read', 'transactions', 'allow');
+          if (sub) permStmt.run(sub, 'read', 'transactions', 'allow');
+        }
+      } catch {
+        // non-blocking
+      }
+
       res.status(200).json({
         message: 'Auth0 user synchronized with SQLite successfully.',
         user
@@ -92,14 +108,14 @@ export function createLocalAuthRouter(): Router {
 
   /**
    * GET /auth/demo-tokens
-   * Returns pre-generated valid access tokens for all sample test users
+   * Returns pre-generated valid access tokens for all sample test users and registered accounts
    */
   router.get(
     '/auth/demo-tokens',
     asyncHandler(async (_req: Request, res: Response) => {
-      const users = ['user123', 'user456', 'user789', 'admin789'];
+      const defaultUsers = ['user123', 'user456', 'user789', 'admin789'];
       const tokens: Record<string, string> = {};
-      for (const userId of users) {
+      for (const userId of defaultUsers) {
         tokens[userId] = await authService.signToken({
           sub: userId,
           email: `${userId}@authz-guard.internal`,
@@ -108,9 +124,44 @@ export function createLocalAuthRouter(): Router {
           local: true
         });
       }
+
+      const userList: Array<{ key: string; label: string; role: string; email: string }> = [
+        { key: 'user123', label: 'user123 (Seeded Demo)', role: 'user', email: 'user123@authz-guard.internal' },
+        { key: 'user456', label: 'user456 (Wallets Read)', role: 'user', email: 'user456@authz-guard.internal' },
+        { key: 'user789', label: 'user789 (Wildcard Writer)', role: 'user', email: 'user789@authz-guard.internal' },
+        { key: 'admin789', label: 'admin789 (Global Admin)', role: 'admin', email: 'admin789@authz-guard.internal' }
+      ];
+
+      try {
+        const { UserRepository } = await import('../repositories/user.repository.js');
+        const userRepo = new UserRepository();
+        const dbUsers = userRepo.findAll();
+        for (const u of dbUsers) {
+          const userKey = u.username || u.email;
+          if (userKey && !tokens[userKey] && !defaultUsers.includes(userKey)) {
+            tokens[userKey] = await authService.signToken({
+              sub: String(u.id),
+              email: u.email,
+              username: u.username,
+              role: u.role,
+              local: true
+            });
+            userList.push({
+              key: userKey,
+              label: `${u.username} (${u.email}) [Signed Person]`,
+              role: u.role,
+              email: u.email
+            });
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+
       res.status(200).json({
         message: 'Pre-generated demo tokens for live curl / testing',
-        tokens
+        tokens,
+        userList
       });
     })
   );

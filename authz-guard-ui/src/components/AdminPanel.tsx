@@ -76,6 +76,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(false);
   const [auditDecisionFilter, setAuditDecisionFilter] = useState<string>("ALL");
+  const [auditUserFilter, setAuditUserFilter] = useState<string>("ALL");
 
   const [toast, setToast] = useState("");
   const [showAddPerm, setShowAddPerm] = useState<number | null>(null);
@@ -94,7 +95,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   useEffect(() => {
     if (adminToken && stage === "dashboard") {
       loadUsers(adminToken);
-      loadAuditLogs("ALL");
+      loadAuditLogs("ALL", "ALL");
     }
   }, [adminToken, stage]);
 
@@ -140,7 +141,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       }
       setStage("dashboard");
       loadUsers(data.token);
-      loadAuditLogs("ALL");
+      loadAuditLogs("ALL", "ALL");
     } catch {
       setLoginError("Could not reach the backend. Is the server running?");
     } finally {
@@ -161,12 +162,15 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
     }
   };
 
-  const loadAuditLogs = async (decision = auditDecisionFilter) => {
+  const loadAuditLogs = async (decision = auditDecisionFilter, userFilter = auditUserFilter) => {
     setIsLoadingAudit(true);
     try {
       let url = `${API}/audit?limit=50`;
       if (decision && decision !== "ALL") {
         url += `&decision=${decision}`;
+      }
+      if (userFilter && userFilter !== "ALL") {
+        url += `&user_id=${encodeURIComponent(userFilter)}`;
       }
       const res = await fetch(url);
       const data = await res.json();
@@ -228,8 +232,14 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       showToast("User ID and Resource are required.");
       return;
     }
+    const cleanResource =
+      newPerm.resource.trim().replace(/^\/+/, "").replace(/\/+$/, "") || newPerm.resource.trim();
     try {
-      const res = await apiFetch("/admin/permissions", { method: "POST", body: JSON.stringify(newPerm) }, adminToken);
+      const res = await apiFetch(
+        "/admin/permissions",
+        { method: "POST", body: JSON.stringify({ ...newPerm, resource: cleanResource }) },
+        adminToken
+      );
       if (res.ok) {
         showToast("Permission added.");
         setShowAddPerm(null);
@@ -379,26 +389,51 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                     <button
                       type="button"
                       className={`audit-filter-btn ${auditDecisionFilter === "ALL" ? "active" : ""}`}
-                      onClick={() => { setAuditDecisionFilter("ALL"); loadAuditLogs("ALL"); }}
+                      onClick={() => { setAuditDecisionFilter("ALL"); loadAuditLogs("ALL", auditUserFilter); }}
                     >
                       ALL
                     </button>
                     <button
                       type="button"
                       className={`audit-filter-btn filter-allow ${auditDecisionFilter === "ALLOW" ? "active" : ""}`}
-                      onClick={() => { setAuditDecisionFilter("ALLOW"); loadAuditLogs("ALLOW"); }}
+                      onClick={() => { setAuditDecisionFilter("ALLOW"); loadAuditLogs("ALLOW", auditUserFilter); }}
                     >
                       ALLOW
                     </button>
                     <button
                       type="button"
                       className={`audit-filter-btn filter-deny ${auditDecisionFilter === "DENY" ? "active" : ""}`}
-                      onClick={() => { setAuditDecisionFilter("DENY"); loadAuditLogs("DENY"); }}
+                      onClick={() => { setAuditDecisionFilter("DENY"); loadAuditLogs("DENY", auditUserFilter); }}
                     >
                       DENY
                     </button>
                   </div>
-                  <button type="button" className="admin-refresh-btn" onClick={() => loadAuditLogs()}>
+
+                  <div className="audit-filter-group audit-user-filter">
+                    <span className="audit-filter-label">User:</span>
+                    <select
+                      className="audit-user-select"
+                      value={auditUserFilter}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAuditUserFilter(val);
+                        loadAuditLogs(auditDecisionFilter, val);
+                      }}
+                    >
+                      <option value="ALL">All Identities</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.username || u.email}>
+                          {u.username} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="admin-refresh-btn"
+                    onClick={() => loadAuditLogs(auditDecisionFilter, auditUserFilter)}
+                  >
                     ↺ Refresh
                   </button>
                 </div>
@@ -588,7 +623,33 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                                   {row.decision}
                                 </span>
                               </td>
-                              <td><code className="audit-user">{row.user_id || "anonymous"}</code></td>
+                              <td>
+                                <div className="audit-user-cell">
+                                  <code
+                                    className="audit-user clickable-audit-user"
+                                    title="Click to filter by this user"
+                                    onClick={() => {
+                                      const u = row.user_id || "ALL";
+                                      setAuditUserFilter(u);
+                                      loadAuditLogs(auditDecisionFilter, u);
+                                    }}
+                                  >
+                                    {row.user_id || "anonymous"}
+                                  </code>
+                                  {row.user_id &&
+                                    (row.user_id === "Ragavan S" ||
+                                      users.some(
+                                        (u) =>
+                                          (u.username === row.user_id || u.email === row.user_id) &&
+                                          !u.username.startsWith("user") &&
+                                          !u.username.startsWith("admin")
+                                      )) && (
+                                      <span className="signed-user-tag" title="Signed User">
+                                        ⭐ Signed
+                                      </span>
+                                    )}
+                                </div>
+                              </td>
                               <td><span className={`action-badge action-${row.action}`}>{row.action}</span></td>
                               <td><code className="resource-code">{row.resource}</code></td>
                               <td><span className="reason-code-badge">{row.reason_code}</span></td>
