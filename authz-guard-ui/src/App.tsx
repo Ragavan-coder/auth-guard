@@ -25,6 +25,8 @@ function apiFetch(path: string, body: unknown) {
   });
 }
 
+const LOCAL_SESSION_KEY = "authz_guard_local_session";
+
 export function App() {
   const [auth0Client, setAuth0Client] = useState<Auth0Client | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -32,7 +34,14 @@ export function App() {
   const [auth0User, setAuth0User] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const [localSession, setLocalSession] = useState<LocalSession | null>(null);
+  const [localSession, setLocalSession] = useState<LocalSession | null>(() => {
+    try {
+      const stored = localStorage.getItem(LOCAL_SESSION_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isLocalSignUp, setIsLocalSignUp] = useState(false);
   const [localUsername, setLocalUsername] = useState("");
   const [localEmail, setLocalEmail] = useState("");
@@ -64,6 +73,8 @@ export function App() {
         const client = await createAuth0Client({
           domain: AUTH0_DOMAIN,
           clientId: AUTH0_CLIENT_ID,
+          cacheLocation: "localstorage",
+          useRefreshTokens: true,
           authorizationParams: { redirect_uri: window.location.origin },
         });
         if (!isMounted) return;
@@ -162,7 +173,13 @@ export function App() {
         return;
       }
 
-      setLocalSession({ token: data.token, user: data.user });
+      const session = { token: data.token, user: data.user };
+      setLocalSession(session);
+      try {
+        localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(session));
+      } catch {
+        // storage fallback
+      }
       showToast(isLocalSignUp
         ? `Account created! Welcome, ${data.user.username}! 🎉`
         : `Welcome back, ${data.user.username}!`
@@ -177,6 +194,11 @@ export function App() {
 
   const handleLocalLogout = () => {
     setLocalSession(null);
+    try {
+      localStorage.removeItem(LOCAL_SESSION_KEY);
+    } catch {
+      // storage fallback
+    }
     showToast("Signed out successfully.");
   };
 
