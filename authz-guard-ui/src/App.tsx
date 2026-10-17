@@ -3,6 +3,7 @@ import { createAuth0Client, Auth0Client, User } from "@auth0/auth0-spa-js";
 import { CyberShieldGraphic } from "./components/CyberShieldGraphic";
 import { GoogleIcon, FacebookIcon, EyeIcon, EyeOffIcon } from "./components/Icons";
 import { AdminPanel } from "./components/AdminPanel";
+import { AuthorizeEvaluator } from "./components/AuthorizeEvaluator";
 import "./App.css";
 
 const AUTH0_DOMAIN = "dev-gnz6w2yoy7e2lpds.us.auth0.com";
@@ -48,9 +49,8 @@ export function App() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("auth0");
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showEvaluator, setShowEvaluator] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [authzResult, setAuthzResult] = useState<unknown | null>(null);
-  const [isEvaluatingAuthz, setIsEvaluatingAuthz] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -180,42 +180,6 @@ export function App() {
     showToast("Signed out successfully.");
   };
 
-  const testAuthzService = async () => {
-    setIsEvaluatingAuthz(true);
-    setAuthzResult(null);
-    try {
-      let token = "";
-      if (auth0Client && isAuth0Authenticated) {
-        try { const raw = await auth0Client.getTokenSilently(); token = typeof raw === "string" ? raw : ""; }
-        catch { /* silent fallback */ }
-      } else if (localSession) {
-        token = localSession.token;
-      }
-
-      const healthRes = await fetch(`${API}/health/ready`);
-      const healthData = await healthRes.json();
-
-      setAuthzResult({
-        backend: API,
-        serviceStatus: healthData,
-        hasAccessToken: Boolean(token),
-        authenticatedVia: localSession ? "local" : "auth0",
-        testedUser: localSession?.user.email || auth0User?.email || "demo-identity",
-        message: "AuthZ Guard Backend is connected and ready.",
-      });
-      showToast("AuthZ Guard backend query successful!");
-    } catch (err) {
-      setAuthzResult({
-        error: `Could not reach AuthZ Guard backend on ${API}`,
-        detail: (err as Error).message,
-        tip: "Ensure backend is running with 'npm run dev' in authz-guard directory.",
-      });
-      showToast("Could not reach AuthZ backend on port 3000");
-    } finally {
-      setIsEvaluatingAuthz(false);
-    }
-  };
-
   const isAnyAuthenticated = isAuth0Authenticated || !!localSession;
   const currentUser = localSession
     ? { name: localSession.user.username, email: localSession.user.email, picture: null, role: localSession.user.role }
@@ -234,9 +198,34 @@ export function App() {
 
       {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
 
-      <button className="admin-trigger-btn" onClick={() => setShowAdmin(true)} title="Open Admin Console">
-        ⚙ Admin
-      </button>
+      {showEvaluator && (
+        <div className="evaluator-overlay" onClick={() => setShowEvaluator(false)}>
+          <div className="evaluator-modal-content" onClick={(e) => e.stopPropagation()}>
+            <AuthorizeEvaluator
+              onClose={() => setShowEvaluator(false)}
+              defaultToken={localSession?.token}
+              defaultUserId={localSession?.user.email || auth0User?.email}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="top-action-bar">
+        <button
+          className="evaluator-trigger-btn"
+          onClick={() => setShowEvaluator(true)}
+          title="Open Authorize Evaluator"
+        >
+          ⚡ Policy Evaluator
+        </button>
+        <button
+          className="admin-trigger-btn"
+          onClick={() => setShowAdmin(true)}
+          title="Open Admin Console"
+        >
+          ⚙ Admin
+        </button>
+      </div>
 
       <main className="auth-card" aria-label="Authentication portal">
         <section className="form-column">
@@ -290,17 +279,10 @@ export function App() {
                 </div>
 
                 <div className="authz-test-section">
-                  <button
-                    type="button"
-                    className="test-authz-btn"
-                    onClick={testAuthzService}
-                    disabled={isEvaluatingAuthz}
-                  >
-                    {isEvaluatingAuthz ? <span className="spinner" /> : "Verify AuthZ Guard Service Status"}
-                  </button>
-                  {authzResult !== null && (
-                    <pre className="authz-result-json">{JSON.stringify(authzResult, null, 2)}</pre>
-                  )}
+                  <AuthorizeEvaluator
+                    defaultToken={localSession?.token}
+                    defaultUserId={localSession?.user.email || auth0User?.email}
+                  />
                 </div>
 
                 <div className="profile-actions">
