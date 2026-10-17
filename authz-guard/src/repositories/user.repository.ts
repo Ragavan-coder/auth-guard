@@ -94,7 +94,40 @@ export class UserRepository {
 
   public findAllWithPermissions(): UserWithPermissions[] {
     const users = this.findAll();
-    return users.map((u) => {
+    const existingUserIds = new Set<string>();
+    for (const u of users) {
+      existingUserIds.add(u.email);
+      existingUserIds.add(u.username);
+    }
+
+    // Automatically discover any identities in user_permissions (e.g. user123, user456, user789)
+    const distinctPermUsers = this.db
+      .prepare('SELECT DISTINCT user_id FROM user_permissions ORDER BY user_id ASC')
+      .all() as Array<{ user_id: string }>;
+
+    let virtualId = 1000;
+    const additionalUsers: UserWithPermissions[] = [];
+
+    for (const { user_id } of distinctPermUsers) {
+      if (!existingUserIds.has(user_id)) {
+        const perms = this.db
+          .prepare(
+            'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? ORDER BY id ASC'
+          )
+          .all(user_id) as Array<{ id: number; action: string; resource: string; effect: string }>;
+
+        additionalUsers.push({
+          id: virtualId++,
+          username: user_id,
+          email: user_id.includes('@') ? user_id : `${user_id}@authz-guard.internal`,
+          role: user_id.toLowerCase().includes('admin') ? 'admin' : 'user',
+          created_at: '2026-10-17 00:00:00',
+          permissions: perms
+        });
+      }
+    }
+
+    const mappedUsers = users.map((u) => {
       const perms = this.db
         .prepare(
           'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? OR user_id = ? ORDER BY id ASC'
@@ -102,6 +135,8 @@ export class UserRepository {
         .all(u.email, u.username) as Array<{ id: number; action: string; resource: string; effect: string }>;
       return { ...u, permissions: perms };
     });
+
+    return [...mappedUsers, ...additionalUsers];
   }
 
   public deleteById(id: number): boolean {

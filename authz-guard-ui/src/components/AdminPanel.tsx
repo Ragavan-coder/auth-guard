@@ -464,13 +464,13 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                           {expandedUser === user.id && (
                             <div className="admin-perm-panel">
                               <div className="admin-perm-header">
-                                <span>Permissions for <code>{user.email}</code></span>
+                                <span>Permissions for <code>{user.username}</code> ({user.email})</span>
                                 <button
                                   type="button"
                                   className="admin-add-perm-btn"
                                   onClick={() => {
                                     setShowAddPerm(user.id);
-                                    setNewPerm({ user_id: user.email, action: "read", resource: "", effect: "allow" });
+                                    setNewPerm({ user_id: user.username || user.email, action: "read", resource: "", effect: "allow" });
                                   }}
                                 >
                                   + Add Rule

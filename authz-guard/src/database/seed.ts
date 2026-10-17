@@ -27,6 +27,17 @@ export function seedPermissions(db: Database.Database = getDatabase()): { insert
   let insertedCount = 0;
 
   const seedTransaction = db.transaction(() => {
+    // Seed demo user accounts into users table if not present
+    const userInsertStmt = db.prepare(`
+      INSERT OR IGNORE INTO users (username, email, password_hash, role)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    userInsertStmt.run('user123', 'user123@authz-guard.internal', 'demo:password', 'user');
+    userInsertStmt.run('user456', 'user456@authz-guard.internal', 'demo:password', 'user');
+    userInsertStmt.run('user789', 'user789@authz-guard.internal', 'demo:password', 'user');
+    userInsertStmt.run('admin789', 'admin789@authz-guard.internal', 'demo:password', 'admin');
+
     for (const perm of SAMPLE_PERMISSIONS) {
       // Check if exact rule already exists
       const existing = db
