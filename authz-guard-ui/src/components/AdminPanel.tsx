@@ -81,6 +81,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   const [toast, setToast] = useState("");
   const [showAddPerm, setShowAddPerm] = useState<number | null>(null);
   const [newPerm, setNewPerm] = useState({ user_id: "", action: "read", resource: "", effect: "allow" });
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
   // Escape key closes modal
   useEffect(() => {
@@ -183,18 +184,23 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
   };
 
   const handleDeleteUser = async (user: AdminUser) => {
-    if (!confirm(`Delete user "${user.email}" and all their permissions?`)) return;
     try {
       const res = await apiFetch(`/admin/users/${user.id}`, { method: "DELETE" }, adminToken);
       if (res.ok) {
-        showToast(`User ${user.email} deleted.`);
+        showToast(`User ${user.username || user.email} deleted.`);
+        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        setDeletingUserId(null);
+        if (expandedUser === user.id) setExpandedUser(null);
         loadUsers(adminToken);
+        loadAuditLogs();
       } else {
         const d = await res.json();
         showToast(d?.error?.message || "Delete failed.");
+        setDeletingUserId(null);
       }
     } catch {
-      showToast("Network error.");
+      showToast("Network error during delete.");
+      setDeletingUserId(null);
     }
   };
 
@@ -483,15 +489,36 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                               >
                                 {expandedUser === user.id ? "▲ Perms" : "▼ Perms"} ({user.permissions.length})
                               </button>
-                              {user.role !== "admin" && (
-                                <button
-                                  type="button"
-                                  className="admin-delete-user-btn"
-                                  onClick={() => handleDeleteUser(user)}
-                                  title="Delete user"
-                                >
-                                  🗑 Delete
-                                </button>
+                              {(user.username !== "admin" && user.email !== "admin@authz-guard.local") && (
+                                deletingUserId === user.id ? (
+                                  <div className="admin-confirm-delete-group">
+                                    <button
+                                      type="button"
+                                      className="admin-confirm-btn"
+                                      onClick={() => handleDeleteUser(user)}
+                                      title="Confirm delete"
+                                    >
+                                      ✓ Confirm
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="admin-cancel-btn"
+                                      onClick={() => setDeletingUserId(null)}
+                                      title="Cancel"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="admin-delete-user-btn"
+                                    onClick={() => setDeletingUserId(user.id)}
+                                    title={`Delete user ${user.username || user.email}`}
+                                  >
+                                    🗑 Delete
+                                  </button>
+                                )
                               )}
                             </div>
                           </div>

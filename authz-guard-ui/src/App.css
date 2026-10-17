@@ -1260,6 +1260,51 @@
   border-color: rgba(255, 60, 60, 0.4);
 }
 
+.admin-confirm-delete-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-confirm-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  color: #f87171;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.admin-confirm-btn:hover {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #ffffff;
+}
+
+.admin-cancel-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #94a3b8;
+  padding: 5px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.admin-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
 /* Permissions Panel */
 .admin-perm-panel {
   border-top: 1px solid rgba(255, 255, 255, 0.06);

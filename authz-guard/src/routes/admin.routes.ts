@@ -50,20 +50,27 @@ export function createAdminRouter(): Router {
         return;
       }
 
-      const user = userRepo.findById(id);
+      const allUsers = userRepo.findAllWithPermissions();
+      const user = userRepo.findById(id) || allUsers.find((u) => u.id === id);
       if (!user) {
         res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found.' } });
         return;
       }
 
-      if (user.role === 'admin') {
-        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Cannot delete an admin account.' } });
+      const adminCount = allUsers.filter((u) => u.role === 'admin').length;
+      if (user.role === 'admin' && (user.username === 'admin' || adminCount <= 1)) {
+        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Cannot delete the primary admin account.' } });
         return;
       }
 
-      userRepo.deleteById(id);
-      logger.info({ userId: id }, 'Admin deleted user account.');
-      res.status(200).json({ message: `User ${user.email} deleted successfully.` });
+      const deleted = userRepo.deleteById(id);
+      if (!deleted) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found or already deleted.' } });
+        return;
+      }
+
+      logger.info({ userId: id, username: user.username }, 'Admin deleted user account.');
+      res.status(200).json({ message: `User ${user.username || user.email} deleted successfully.` });
     })
   );
 

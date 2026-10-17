@@ -98,6 +98,7 @@ export class UserRepository {
     for (const u of users) {
       existingUserIds.add(u.email);
       existingUserIds.add(u.username);
+      existingUserIds.add(String(u.id));
     }
 
     // Automatically discover any identities in user_permissions (e.g. user123, user456, user789)
@@ -110,6 +111,11 @@ export class UserRepository {
 
     for (const { user_id } of distinctPermUsers) {
       if (!existingUserIds.has(user_id)) {
+        const num = parseInt(user_id, 10);
+        if (Number.isFinite(num) && users.some((u) => u.id === num)) {
+          continue;
+        }
+
         const perms = this.db
           .prepare(
             'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? ORDER BY id ASC'
@@ -130,9 +136,9 @@ export class UserRepository {
     const mappedUsers = users.map((u) => {
       const perms = this.db
         .prepare(
-          'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? OR user_id = ? ORDER BY id ASC'
+          'SELECT id, user_id, action, resource, effect FROM user_permissions WHERE user_id = ? OR user_id = ? OR user_id = ? ORDER BY id ASC'
         )
-        .all(u.email, u.username) as Array<{ id: number; action: string; resource: string; effect: string }>;
+        .all(u.email, u.username, String(u.id)) as Array<{ id: number; action: string; resource: string; effect: string }>;
       return { ...u, permissions: perms };
     });
 
@@ -142,11 +148,27 @@ export class UserRepository {
   public deleteById(id: number): boolean {
     try {
       const user = this.findById(id);
-      if (!user) return false;
-      this.db.prepare('DELETE FROM user_permissions WHERE user_id = ? OR user_id = ?').run(user.email, user.username);
-      const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
-      const result = stmt.run(id);
-      return result.changes > 0;
+      if (user) {
+        this.db
+          .prepare('DELETE FROM user_permissions WHERE user_id = ? OR user_id = ? OR user_id = ?')
+          .run(user.email, user.username, String(user.id));
+        const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+        const result = stmt.run(id);
+        return result.changes > 0;
+      }
+
+      // Check if user is a virtual / permissions-only discovered user (e.g. id >= 1000)
+      const allUsers = this.findAllWithPermissions();
+      const virtualUser = allUsers.find((u) => u.id === id);
+      if (virtualUser) {
+        const stmt = this.db.prepare(
+          'DELETE FROM user_permissions WHERE user_id = ? OR user_id = ?'
+        );
+        const result = stmt.run(virtualUser.username, virtualUser.email);
+        return result.changes > 0;
+      }
+
+      return false;
     } catch (err) {
       logger.error({ err, id }, 'Failed to delete user.');
       throw new DatabaseError('Failed to delete user.');
